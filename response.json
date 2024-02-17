@@ -1,0 +1,31 @@
+{
+  "elements": [
+    {
+      "profile_nickname": "정현서",
+      "profile_thumbnail_image": "http://k.kakaocdn.net/dn/mFxBx/btsBVzqJmKq/GkMJkw9lARKPYNJ4acbLC0/img_640x640.jpg",
+      "allowed_msg": true,
+      "id": 123412341234,
+      "uuid": "asdfniiasdnjf",
+      "favorite": false
+    },
+    {
+      "profile_nickname": "박우빈",
+      "profile_thumbnail_image": "",
+      "allowed_msg": true,
+      "id": 123412341234,
+      "uuid": "asdfjnasioudnfioasd",
+      "favorite": false
+    },
+    {
+      "profile_nickname": "안진형",
+      "profile_thumbnail_image": "",
+      "allowed_msg": true,
+      "id": 1438436390,
+      "uuid": "iasdiofjoiasjdiofja",
+      "favorite": false
+    }
+  ],
+  "total_count": 3,
+  "after_url": null,
+  "favorite_count": 0
+}

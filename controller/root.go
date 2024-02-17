@@ -15,16 +15,17 @@ func Controller(port string) {
 		cors.Config{
 			AllowOrigins: []string{"*"},
 			AllowMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE"},
-			MaxAge:       12 * time.Hour,
+			MaxAge:       24 * time.Hour,
 		}))
 	db := database.MySQLInit()
 
-	r.POST("signup/:id", func(c *gin.Context) {
+	r.POST("/signup/:id", func(c *gin.Context) {
 		service.Login(db, c)
 	})
 
-	r.GET("get-fredns/:id", func(c *gin.Context) {
-		//service.GetFrends(c)
+	r.GET("/loadfriends", func(c *gin.Context) {
+		service.LoadFriends(c)
 	})
+
 	r.Run(port)
 }

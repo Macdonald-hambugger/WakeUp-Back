@@ -72,6 +72,7 @@ func SignUp(db *gorm.DB, c *gin.Context) {
 
 func Login(db *gorm.DB, c *gin.Context) {
 	accessToken := c.Param("id")
+	entity.AccessToken = accessToken
 
 	userInfo, err := GetKakaoUserInfo(accessToken)
 	if err != nil {
