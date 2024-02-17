@@ -3,34 +3,33 @@ package service
 import (
 	"WakeUp-Back/entity"
 	"encoding/json"
-	"fmt"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 	"io/ioutil"
 	"net/http"
+	"time"
 )
 
-func requestUserInfo() {
-	resp, err := http.Get("https://kapi.kakao.com/v2/user/me")
+func CreateToken(userId int64) (string, error) {
+	var err error
+
+	secretKey := "asdooinvzxcubuwebdcs" // 이 키는 보안을 위해 안전하게 보관해야 합니다.
+
+	atClaims := jwt.MapClaims{}
+	atClaims["authorized"] = true
+	atClaims["user_id"] = userId
+	atClaims["exp"] = time.Now().Add(time.Hour * 24).Unix() // 토큰 유효 시간은 24시간으로 설정했습니다. 필요에 따라 변경하세요.
+	at := jwt.NewWithClaims(jwt.SigningMethodHS256, atClaims)
+
+	token, err := at.SignedString([]byte(secretKey))
 	if err != nil {
-		fmt.Printf("failed to request user information: %v\n", err)
-		return
+		return "", err
 	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		fmt.Printf("failed to read response body: %v\n", err)
-		return
-	}
-
-	var result map[string]interface{}
-	json.Unmarshal(body, &result)
-
-	fmt.Println(result)
+	return token, nil
 }
 
-func GetKakaoUserInfo(accessToken string) (*entity.User, error) {
+func GetKakaoUserInfo(accessToken string) (*entity.KakaoUserInfoDTO, error) {
 	req, err := http.NewRequest("GET", "https://kapi.kakao.com/v2/user/me", nil)
 	if err != nil {
 		return nil, err
@@ -50,7 +49,7 @@ func GetKakaoUserInfo(accessToken string) (*entity.User, error) {
 		return nil, err
 	}
 
-	var userInfo entity.User
+	var userInfo entity.KakaoUserInfoDTO
 	err = json.Unmarshal(body, &userInfo)
 	if err != nil {
 		return nil, err
@@ -61,52 +60,43 @@ func GetKakaoUserInfo(accessToken string) (*entity.User, error) {
 
 func SignUp(db *gorm.DB, c *gin.Context) {
 	accessToken := c.Param("id")
+
 	userInfo, err := GetKakaoUserInfo(accessToken)
 	if err != nil {
-		panic("카카오 유저 정보를 받아오는데 실패하였습니다.")
-	}
-
-	user := &entity.User{
-		Nickname: userInfo.Nickname,
-		Email:    userInfo.Email,
-		Profile:  userInfo.Profile,
-		Uuid:     userInfo.Uuid,
-	}
-
-	if err := db.Create(user).Error; err != nil {
-		panic(err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to get user info from Kakao"})
 		return
 	}
 
-	c.JSON(200, user)
+	c.JSON(200, gin.H{"userInfo": userInfo})
 }
 
 func Login(db *gorm.DB, c *gin.Context) {
 	accessToken := c.Param("id")
+
 	userInfo, err := GetKakaoUserInfo(accessToken)
 	if err != nil {
-		panic("카카오 유저 정보를 받아오는데 실패하였습니다.")
-	}
-
-	user := &entity.User{
-		Nickname: userInfo.Nickname,
-		Email:    userInfo.Email,
-		Profile:  userInfo.Profile,
-		Uuid:     userInfo.Uuid,
-	}
-
-	if err := db.Create(user).Error; err != nil {
-		panic(err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to get user info from Kakao"})
 		return
 	}
 
-	if err := db.Where("uuid = ?", user.Uuid).First(&user).Error; err != nil {
+	user := &entity.User{
+		ID:           userInfo.ID,
+		Nickname:     userInfo.KakaoAccount.Profile.Nickname,
+		ProfileImage: userInfo.KakaoAccount.Profile.ProfileImageURL,
+	}
+
+	if err := db.Where("id = ?", user.ID).First(&user).Error; err != nil {
 		err := db.Create(&user).Error
 		if err != nil {
 			c.JSON(400, gin.H{"error": err.Error()})
 		}
 	} else {
-		c.SetCookie("user_uuid", user.Uuid, 3600, "/", "localhost", false, true)
-		c.JSON(200, gin.H{"message": "User logged in successfully"})
+		token, err := CreateToken(user.ID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not generate token"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"token": token})
 	}
 }
